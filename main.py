@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 # CONFIG
 CHECK_INTERVAL = 600  # 10 minutes
-NTFY_TOPIC = "fs-orlando-jobs"
+NTFY_TOPIC = "fs-florida-jobs"
 seen_jobs = set()
 WORKDAY_API = "https://fourseasons.wd3.myworkdayjobs.com/wday/cxs/fourseasons/Search/jobs"
 HEADERS = {
@@ -33,11 +33,12 @@ def get_jobs():
     jobs = []
     for job in data.get("jobPostings", []):
         location = job.get("locationsText", "Unknown")
-        if "Orlando" not in location:
-            continue
+        # Only include Florida locations
+        # All jobs returned by this API for locationRegionStateProvince are already in Florida
         external_path = job.get("externalPath", "")
         job_id = external_path.split("/")[-1]
         link = f"https://fourseasons.wd3.myworkdayjobs.com/en-US/search/job/{job_id}?locationRegionStateProvince=9c1a239b35bd4598856e5393b249b8a1"
+
         jobs.append({
             "id": job.get("bulletFields", [external_path])[0],
             "title": job.get("title", "Unknown"),
@@ -47,7 +48,7 @@ def get_jobs():
     return jobs
 
 def send_ntfy(job):
-    message = f"📢 New Orlando job posted:\n{job['title']} in {job['location']}\n{job['link']}"
+    message = f"📢 New Florida job posted:\n{job['title']} in {job['location']}\n{job['link']}"
     try:
         requests.post(f"https://ntfy.sh/{NTFY_TOPIC}", data=message.encode("utf-8"), timeout=5)
         print(f"✅ Notification sent: {job['title']}")
@@ -71,6 +72,18 @@ def job_alert_loop():
 
 # Start the job alert loop in a separate thread
 threading.Thread(target=job_alert_loop, daemon=True).start()
+
+# Send a test notification on startup
+def send_startup_test():
+    test_job = {
+        "id": "TEST_FL",
+        "title": "Test Florida Job",
+        "location": "Florida",
+        "link": "https://fourseasons.wd3.myworkdayjobs.com/en-US/search/job/TEST_FL?locationRegionStateProvince=9c1a239b35bd4598856e5393b249b8a1"
+    }
+    send_ntfy(test_job)
+
+send_startup_test()
 
 # Minimal HTTP endpoint for UptimeRobot
 @app.route("/ping")
