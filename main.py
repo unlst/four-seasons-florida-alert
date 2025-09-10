@@ -2,9 +2,11 @@ from flask import Flask
 import threading
 import requests
 import time
+import os
 
 app = Flask(__name__)
 
+# CONFIG
 CHECK_INTERVAL = 600  # 10 minutes
 NTFY_TOPIC = "fs-orlando-jobs"
 seen_jobs = set()
@@ -67,13 +69,14 @@ def job_alert_loop():
             print(f"⚠️ Unexpected error: {e}")
             time.sleep(CHECK_INTERVAL)
 
-# Start job alert loop in a separate thread
+# Start the job alert loop in a separate thread
 threading.Thread(target=job_alert_loop, daemon=True).start()
 
-# Minimal HTTP endpoint
+# Minimal HTTP endpoint for UptimeRobot
 @app.route("/ping")
 def ping():
     return "OK", 200
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)  # Render uses this port or set via $PORT
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
